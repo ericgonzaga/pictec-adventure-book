@@ -6,6 +6,9 @@ import java.util.UUID;
 import org.slf4j.LoggerFactory;
 import org.slf4j.Logger;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import lombok.RequiredArgsConstructor;
 import pictec.adventurebook.domain.entities.BookContent;
@@ -16,8 +19,8 @@ import pictec.adventurebook.domain.exceptions.ConflictException;
 import pictec.adventurebook.domain.exceptions.InvalidBookException;
 import pictec.adventurebook.domain.exceptions.NotFoundException;
 import pictec.adventurebook.domain.logic.BookValidator;
-import pictec.adventurebook.services.irespositories.IBookMetadataRepository;
-import pictec.adventurebook.services.irespositories.IGameSessionRepository;
+import pictec.adventurebook.services.irepositories.IBookMetadataRepository;
+import pictec.adventurebook.services.irepositories.IGameSessionRepository;
 import pictec.adventurebook.services.istorage.IBookContentStorage;
 import tools.jackson.core.JacksonException;
 import tools.jackson.databind.ObjectMapper;
@@ -34,60 +37,60 @@ public class BookApplicationService {
     private final BookValidator validator;
     private final ObjectMapper mapper;
 
+    @Transactional(readOnly = true)
     public BookSection getSection(String bookId, String sectionId) {
         return getContent(bookId).findSection(sectionId)
                 .orElseThrow(() -> new NotFoundException("Section not found: " + sectionId));
     }
 
+    @Transactional(readOnly = true)
     public List<BookMetadata> list(String query, String category, BookDifficulty difficulty) {
         return metadataRepository.search(query == null ? "" : query.trim(),
                 blankToNull(category), difficulty);
     }
 
+    @Transactional(readOnly = true)
     public BookMetadata get(String id) {
         return metadataRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("Book not found: " + id));
     }
 
+    @Transactional(readOnly = true)
     public BookContent getContent(String bookId) {
         return parse(storage.load(get(bookId).getContentKey()));
     }
 
+    @Transactional
     public BookMetadata insert(byte[] file, BookMetadata metadata) {
         BookContent content = parse(file);
-        if (isBlank(content.title()) || isBlank(content.author())) {
-            throw new InvalidBookException("Book must have title and author");
-        }
         validator.validate(content);
 
         String id = UUID.randomUUID().toString();
         String key = "books/" + id + "/" + UUID.randomUUID() + ".json";
 
-        try {
-            storage.save(key, file);
+        storage.save(key, file);
+        cleanupFileIfNotCommitted(key);
 
-            var newMetadata = new BookMetadata(
-                    id,
-                    content.title(),
-                    content.author(),
-                    metadata.getDescription(),
-                    metadata.getCategory(),
-                    metadata.getDifficulty(),
-                    key);
-            return metadataRepository.save(newMetadata);
-        } catch (RuntimeException e) {
-            deleteFileQuietly(key);
-            throw e;
-        }
+        var newMetadata = new BookMetadata(
+                id,
+                content.title(),
+                content.author(),
+                metadata.getDescription(),
+                metadata.getCategory(),
+                metadata.getDifficulty(),
+                key);
+        return metadataRepository.saveAndFlush(newMetadata);
     }
 
+    @Transactional
     public void delete(String id) {
         BookMetadata book = get(id);
         if (sessions.existsByBookId(id)) {
             throw new ConflictException("Book has games associated and cannot be deleted");
         }
         metadataRepository.delete(book);
-        deleteFileQuietly(book.getContentKey());
+        metadataRepository.flush();
+        deleteFileAfterCommit(book.getContentKey());
     }
 
     private BookContent parse(byte[] bytes) {
@@ -96,6 +99,35 @@ public class BookApplicationService {
         } catch (JacksonException e) {
             throw new InvalidBookException("Invalid book JSON: " + e.getOriginalMessage());
         }
+    }
+
+    // If the transaction is rolled back, we want to delete the file we just saved
+    private void cleanupFileIfNotCommitted(String key) {
+        if (!TransactionSynchronizationManager.isSynchronizationActive()) {
+            return;
+        }
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCompletion(int status) {
+                if (status != STATUS_COMMITTED) {
+                    deleteFileQuietly(key);
+                }
+            }
+        });
+    }
+
+    // If the transaction is committed, we want to delete the file after the commit
+    private void deleteFileAfterCommit(String key) {
+        if (!TransactionSynchronizationManager.isSynchronizationActive()) {
+            deleteFileQuietly(key);
+            return;
+        }
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                deleteFileQuietly(key);
+            }
+        });
     }
 
     private void deleteFileQuietly(String key) {

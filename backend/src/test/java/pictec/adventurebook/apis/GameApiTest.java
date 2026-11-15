@@ -1,6 +1,8 @@
 package pictec.adventurebook.apis;
 
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
@@ -16,7 +18,9 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import pictec.adventurebook.domain.entities.*;
 import pictec.adventurebook.domain.enums.SectionType;
+import pictec.adventurebook.domain.exceptions.ConflictException;
 import pictec.adventurebook.domain.exceptions.GameFinishedException;
+import pictec.adventurebook.domain.exceptions.InvalidChoiceException;
 import pictec.adventurebook.domain.exceptions.NotFoundException;
 import pictec.adventurebook.services.GameApplicationService;
 import pictec.adventurebook.services.PlayState;
@@ -62,31 +66,32 @@ class GameApiTest {
 
     @Test
     void choose_unknownGame_returns404() throws Exception {
-        when(service.chooseOption("u1", "g1", 0)).thenThrow(new NotFoundException("Game not found"));
+        when(service.chooseOption("u1", "g1", 0, 0L))
+                .thenThrow(new NotFoundException("Game not found"));
 
-        mvc.perform(post("/api/games/g1/options/0").param("userId", "u1"))
+        mvc.perform(post("/api/games/g1/options/0").param("userId", "u1").param("version", "0"))
                 .andExpect(status().isNotFound());
     }
 
     @Test
     void choose_finishedGame_returns409() throws Exception {
-        when(service.chooseOption("u1", "g1", 0)).thenThrow(new GameFinishedException("over"));
+        when(service.chooseOption("u1", "g1", 0, 0L)).thenThrow(new GameFinishedException("over"));
 
-        mvc.perform(post("/api/games/g1/options/0").param("userId", "u1"))
+        mvc.perform(post("/api/games/g1/options/0").param("userId", "u1").param("version", "0"))
                 .andExpect(status().isConflict());
     }
 
     @Test
     void choose_invalidOption_returns400() throws Exception {
-        when(service.chooseOption("u1", "g1", 9)).thenThrow(new InvalidChoiceException("bad index"));
+        when(service.chooseOption("u1", "g1", 9, 0L)).thenThrow(new InvalidChoiceException("bad index"));
 
-        mvc.perform(post("/api/games/g1/options/9").param("userId", "u1"))
+        mvc.perform(post("/api/games/g1/options/9").param("userId", "u1").param("version", "0"))
                 .andExpect(status().isBadRequest());
     }
 
     @Test
     void choose_nonNumericOption_returns400() throws Exception {
-        mvc.perform(post("/api/games/g1/options/abc").param("userId", "u1"))
+        mvc.perform(post("/api/games/g1/options/abc").param("userId", "u1").param("version", "0"))
                 .andExpect(status().isBadRequest());
     }
 }

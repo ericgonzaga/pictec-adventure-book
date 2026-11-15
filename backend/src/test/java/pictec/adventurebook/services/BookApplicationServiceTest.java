@@ -22,8 +22,8 @@ import pictec.adventurebook.domain.enums.BookDifficulty;
 import pictec.adventurebook.domain.exceptions.ConflictException;
 import pictec.adventurebook.domain.exceptions.InvalidBookException;
 import pictec.adventurebook.domain.logic.BookValidator;
-import pictec.adventurebook.services.irespositories.IBookMetadataRepository;
-import pictec.adventurebook.services.irespositories.IGameSessionRepository;
+import pictec.adventurebook.services.irepositories.IBookMetadataRepository;
+import pictec.adventurebook.services.irepositories.IGameSessionRepository;
 import pictec.adventurebook.services.istorage.IBookContentStorage;
 import tools.jackson.databind.json.JsonMapper;
 

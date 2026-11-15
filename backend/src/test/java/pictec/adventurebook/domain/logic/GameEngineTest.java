@@ -6,9 +6,9 @@ import static pictec.adventurebook.support.BookFixtures.*;
 
 import org.junit.jupiter.api.Test;
 
-import pictec.adventurebook.domain.entities.InvalidChoiceException;
 import pictec.adventurebook.domain.enums.GameStatus;
 import pictec.adventurebook.domain.exceptions.GameFinishedException;
+import pictec.adventurebook.domain.exceptions.InvalidChoiceException;
 
 class GameEngineTest {
 

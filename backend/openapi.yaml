@@ -1,0 +1,302 @@
+openapi: 3.1.0
+info:
+  title: Adventure Book API
+  version: 0.0.1
+servers:
+  - url: http://localhost:8080
+tags:
+  - name: Books
+  - name: Games
+
+paths:
+  /api/books:
+    get:
+      tags: [Books]
+      summary: Lista/busca livros
+      operationId: listBooks
+      parameters:
+        - { name: query, in: query, schema: { type: string } }
+        - { name: category, in: query, schema: { type: string } }
+        - { name: difficulty, in: query, schema: { $ref: '#/components/schemas/BookDifficulty' } }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/BookMetadata' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+    post:
+      tags: [Books]
+      summary: Insere livro (arquivo JSON + metadados)
+      operationId: insertBook
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file, metadata]
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: Arquivo .json do livro
+                metadata:
+                  $ref: '#/components/schemas/BookMetadataInput'
+            encoding:
+              metadata:
+                contentType: application/json
+      responses:
+        '201':
+          description: Criado
+          headers:
+            Location:
+              schema: { type: string, example: /api/books/b1 }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/BookMetadata' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '422': { $ref: '#/components/responses/Unprocessable' }
+
+  /api/books/{id}:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string } }
+    get:
+      tags: [Books]
+      summary: Busca livro por id
+      operationId: getBook
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/BookMetadata' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    delete:
+      tags: [Books]
+      summary: Remove livro
+      operationId: deleteBook
+      responses:
+        '204': { description: Removido }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+
+  /api/games:
+    post:
+      tags: [Games]
+      summary: Inicia novo jogo
+      operationId: startGame
+      parameters:
+        - $ref: '#/components/parameters/UserId'
+        - { name: bookId, in: query, required: true, schema: { type: string } }
+      responses:
+        '201':
+          description: Jogo iniciado
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PlayState' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /api/games/in-progress:
+    get:
+      tags: [Games]
+      summary: Retoma jogo em andamento do livro
+      operationId: resumeGame
+      parameters:
+        - $ref: '#/components/parameters/UserId'
+        - { name: bookId, in: query, required: true, schema: { type: string } }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PlayState' }
+        '204': { description: Nenhum jogo em andamento }
+        '400': { $ref: '#/components/responses/BadRequest' }
+
+  /api/games/{gameSessionId}:
+    get:
+      tags: [Games]
+      summary: Obtém estado do jogo
+      operationId: getGame
+      parameters:
+        - $ref: '#/components/parameters/UserId'
+        - $ref: '#/components/parameters/GameSessionId'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PlayState' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /api/games/{gameSessionId}/restart:
+    post:
+      tags: [Games]
+      summary: Reinicia o jogo
+      operationId: restartGame
+      parameters:
+        - $ref: '#/components/parameters/UserId'
+        - $ref: '#/components/parameters/GameSessionId'
+      responses:
+        '201':
+          description: Novo jogo criado
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PlayState' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /api/games/{gameSessionId}/options/{optionIndex}:
+    post:
+      tags: [Games]
+      summary: Escolhe uma opção da seção atual
+      operationId: chooseOption
+      parameters:
+        - $ref: '#/components/parameters/UserId'
+        - $ref: '#/components/parameters/GameSessionId'
+        - name: optionIndex
+          in: path
+          required: true
+          schema: { type: integer, minimum: 0 }
+        - name: version
+          in: query
+          required: true
+          description: Versão da sessão recebida no último PlayState
+          schema: { type: integer, minimum: 0 }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PlayState' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+
+components:
+  parameters:
+    UserId:
+      name: userId
+      in: query
+      required: true
+      schema: { type: string, example: u1 }
+    GameSessionId:
+      name: gameSessionId
+      in: path
+      required: true
+      schema: { type: string }
+
+  responses:
+    BadRequest:
+      description: Requisição inválida
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/ProblemDetail' }
+    NotFound:
+      description: Não encontrado
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/ProblemDetail' }
+    Conflict:
+      description: Conflito (livro com jogos, jogo finalizado ou edição concorrente)
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/ProblemDetail' }
+    Unprocessable:
+      description: Livro inválido
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/ProblemDetail' }
+
+  schemas:
+    BookDifficulty:
+      type: string
+      enum: [EASY, MEDIUM, HARD]
+    GameStatus:
+      type: string
+      enum: [IN_PROGRESS, FINISHED, DEAD, ABANDONED]
+    SectionType:
+      type: string
+      enum: [BEGIN, NODE, END]
+    ConsequenceType:
+      type: string
+      enum: [LOSE_HEALTH, GAIN_HEALTH]
+
+    BookMetadataInput:
+      type: object
+      required: [difficulty]
+      properties:
+        description: { type: string, maxLength: 1000 }
+        category: { type: string, maxLength: 100 }
+        difficulty: { $ref: '#/components/schemas/BookDifficulty' }
+      example:
+        description: Uma aventura nas cavernas
+        category: fantasy
+        difficulty: EASY
+
+    BookMetadata:
+      type: object
+      properties:
+        id: { type: string }
+        title: { type: string }
+        author: { type: string }
+        description: { type: string }
+        category: { type: string }
+        difficulty: { $ref: '#/components/schemas/BookDifficulty' }
+        contentKey: { type: string }
+        createdAt: { type: string, format: date-time }
+
+    GameSession:
+      type: object
+      properties:
+        id: { type: string }
+        userId: { type: string }
+        bookId: { type: string }
+        currentBookSectionId: { type: string }
+        health: { type: integer }
+        status: { $ref: '#/components/schemas/GameStatus' }
+        updatedAt: { type: string, format: date-time }
+        version: { type: integer, format: int64 }
+        inProgress: { type: boolean }
+
+    Consequence:
+      type: object
+      properties:
+        type: { $ref: '#/components/schemas/ConsequenceType' }
+        value: { type: integer }
+        text: { type: string }
+
+    BookSectionOption:
+      type: object
+      properties:
+        description: { type: string }
+        gotoId: { type: string }
+        consequence: { $ref: '#/components/schemas/Consequence' }
+
+    BookSection:
+      type: object
+      properties:
+        id: { type: string }
+        text: { type: string }
+        type: { $ref: '#/components/schemas/SectionType' }
+        options:
+          type: array
+          items: { $ref: '#/components/schemas/BookSectionOption' }
+
+    PlayState:
+      type: object
+      properties:
+        gameSession: { $ref: '#/components/schemas/GameSession' }
+        section: { $ref: '#/components/schemas/BookSection' }
+
+    ProblemDetail:
+      type: object
+      properties:
+        type: { type: string }
+        title: { type: string }
+        status: { type: integer }
+        detail: { type: string }
+        instance: { type: string }

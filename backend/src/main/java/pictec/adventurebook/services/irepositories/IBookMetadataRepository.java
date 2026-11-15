@@ -1,4 +1,4 @@
-package pictec.adventurebook.services.irespositories;
+package pictec.adventurebook.services.irepositories;
 
 import java.util.List;
 

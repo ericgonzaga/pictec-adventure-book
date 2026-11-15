@@ -8,10 +8,11 @@ import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
 import pictec.adventurebook.domain.entities.GameSession;
 import pictec.adventurebook.domain.enums.GameStatus;
+import pictec.adventurebook.domain.exceptions.ConflictException;
 import pictec.adventurebook.domain.exceptions.GameFinishedException;
 import pictec.adventurebook.domain.exceptions.NotFoundException;
 import pictec.adventurebook.domain.logic.GameEngine;
-import pictec.adventurebook.services.irespositories.IGameSessionRepository;
+import pictec.adventurebook.services.irepositories.IGameSessionRepository;
 
 @Service
 @RequiredArgsConstructor
@@ -44,14 +45,20 @@ public class GameApplicationService {
     }
 
     @Transactional
-    public PlayState chooseOption(String userId, String gameSessionId, int optionIndex) {
+    public PlayState chooseOption(String userId, String gameSessionId, int optionIndex, long version) {
         var session = loadOwned(userId, gameSessionId);
+
+        if (session.getVersion() != version) {
+            throw new ConflictException("Wrong game version. Reload and try again.");
+        }
+
         if (session.getStatus() != GameStatus.IN_PROGRESS) {
             throw new GameFinishedException("Game is not in progress: " + gameSessionId);
         }
 
         var content = books.getContent(session.getBookId());
         var nextSection = engine.choose(session, content, optionIndex);
+        sessions.flush(); // update version before returning the new state
         return new PlayState(session, nextSection);
     }
 

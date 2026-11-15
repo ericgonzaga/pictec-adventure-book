@@ -1,4 +1,4 @@
-package pictec.adventurebook.domain.entities;
+package pictec.adventurebook.domain.exceptions;
 
 public class InvalidChoiceException extends RuntimeException {
 

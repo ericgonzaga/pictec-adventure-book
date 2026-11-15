@@ -5,6 +5,7 @@ import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
 
 import java.util.List;
 
@@ -53,7 +54,7 @@ class BooksApiTest {
         when(service.insert(any(), any())).thenThrow(new InvalidBookException("no END"));
 
         mvc.perform(multipart("/api/books").file(file).file(metadata))
-                .andExpect(status().isUnprocessableEntity());
+                .andExpect(status().isBadRequest());
     }
 
     @Test
@@ -66,7 +67,7 @@ class BooksApiTest {
     void list_passesFiltersToService() throws Exception {
         when(service.list("x", null, BookDifficulty.EASY)).thenReturn(List.of(book));
 
-        mvc.perform(get("/api/books").param("q", "x").param("difficulty", "EASY"))
+        mvc.perform(get("/api/books").param("query", "x").param("difficulty", "EASY"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].id").value("b1"));
     }

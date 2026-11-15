@@ -3,7 +3,6 @@ package pictec.adventurebook.domain.logic;
 import pictec.adventurebook.domain.entities.BookContent;
 import pictec.adventurebook.domain.entities.Consequence;
 import pictec.adventurebook.domain.entities.GameSession;
-import pictec.adventurebook.domain.entities.InvalidChoiceException;
 import pictec.adventurebook.domain.entities.BookSection;
 import pictec.adventurebook.domain.entities.BookSectionOption;
 import pictec.adventurebook.domain.enums.ConsequenceType;
@@ -11,12 +10,16 @@ import pictec.adventurebook.domain.enums.GameStatus;
 import pictec.adventurebook.domain.enums.SectionType;
 import pictec.adventurebook.domain.exceptions.GameFinishedException;
 import pictec.adventurebook.domain.exceptions.InvalidBookException;
+import pictec.adventurebook.domain.exceptions.InvalidChoiceException;
 
 public class GameEngine {
 
     private final int initialHealth;
 
     public GameEngine(int initialHealth) {
+        if (initialHealth <= 0) {
+            throw new IllegalArgumentException("Initial health must be greater than zero");
+        }
         this.initialHealth = initialHealth;
     }
 
@@ -56,7 +59,6 @@ public class GameEngine {
         return switch (consequence.type()) {
             case ConsequenceType.LOSE_HEALTH -> health - consequence.value();
             case ConsequenceType.GAIN_HEALTH -> health + consequence.value();
-            default -> health;
         };
     }
 

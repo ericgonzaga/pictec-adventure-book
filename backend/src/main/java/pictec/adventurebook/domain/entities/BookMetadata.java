@@ -8,6 +8,8 @@ import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -41,16 +43,19 @@ public class BookMetadata {
     @Column(nullable = false)
     private String author;
 
+    @Size(max = 500)
     private String description;
 
     /**
      * TODO: create a new entity category managed by the user.
      * We can also change this field to a list to allow multiple categories.
      */
+    @Size(max = 100)
     private String category;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
+    @NotNull
     private BookDifficulty difficulty;
 
     @Column(nullable = false, unique = true)

@@ -18,7 +18,7 @@ import pictec.adventurebook.AdventureBookApplication;
 import pictec.adventurebook.domain.enums.BookDifficulty;
 import pictec.adventurebook.domain.enums.GameStatus;
 import pictec.adventurebook.domain.exceptions.ConflictException;
-import pictec.adventurebook.services.irespositories.IGameSessionRepository;
+import pictec.adventurebook.services.irepositories.IGameSessionRepository;
 
 @SpringBootTest(classes = AdventureBookApplication.class)
 class GameFlowTest {
@@ -52,7 +52,7 @@ class GameFlowTest {
 
         assertEquals(sessionId, games.resumeGameInProgress("u1", bookId).orElseThrow().gameSession().getId());
 
-        games.chooseOption("u1", sessionId, 0);
+        games.chooseOption("u1", sessionId, 0, started.gameSession().getVersion());
 
         var reloaded = games.getGame("u1", sessionId);
         assertEquals("s2", reloaded.section().id());
@@ -81,6 +81,25 @@ class GameFlowTest {
 
         games.startGame("u1", bookId);
         assertThrows(ConflictException.class, () -> books.delete(bookId));
+    }
+
+    @Test
+    void repeatedChoice_withOldVersion_isRejected() {
+        var bookId = newBook();
+        var started = games.startGame("u1", bookId);
+        var sessionId = started.gameSession().getId();
+        var initialVersion = started.gameSession().getVersion();
+
+        var chosen = games.chooseOption("u1", sessionId, 0, initialVersion);
+
+        assertTrue(chosen.gameSession().getVersion() > initialVersion);
+
+        assertThrows(ConflictException.class,
+                () -> games.chooseOption("u1", sessionId, 0, initialVersion));
+
+        var reloaded = games.getGame("u1", sessionId);
+        assertEquals(chosen.gameSession().getVersion(), reloaded.gameSession().getVersion());
+        assertEquals("s2", reloaded.section().id());
     }
 
     private static Path createTempDir() {

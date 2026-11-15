@@ -15,10 +15,11 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import pictec.adventurebook.domain.entities.GameSession;
 import pictec.adventurebook.domain.enums.GameStatus;
+import pictec.adventurebook.domain.exceptions.ConflictException;
 import pictec.adventurebook.domain.exceptions.GameFinishedException;
 import pictec.adventurebook.domain.exceptions.NotFoundException;
 import pictec.adventurebook.domain.logic.GameEngine;
-import pictec.adventurebook.services.irespositories.IGameSessionRepository;
+import pictec.adventurebook.services.irepositories.IGameSessionRepository;
 
 @ExtendWith(MockitoExtension.class)
 class GameApplicationServiceTest {
@@ -61,7 +62,7 @@ class GameApplicationServiceTest {
         var session = existing("u1");
         when(books.getContent("b1")).thenReturn(content());
 
-        var state = service.chooseOption("u1", session.getId(), 0);
+        var state = service.chooseOption("u1", session.getId(), 0, session.getVersion());
 
         assertEquals("s2", state.section().id());
         assertEquals(GameStatus.FINISHED, state.gameSession().getStatus());
@@ -72,7 +73,7 @@ class GameApplicationServiceTest {
         var session = existing("u1");
         when(books.getContent("b1")).thenReturn(content());
 
-        var state = service.chooseOption("u1", session.getId(), 1);
+        var state = service.chooseOption("u1", session.getId(), 1, session.getVersion());
 
         assertEquals(0, state.gameSession().getHealth());
         assertEquals(GameStatus.DEAD, state.gameSession().getStatus());
@@ -83,7 +84,7 @@ class GameApplicationServiceTest {
         var session = existing("owner");
 
         assertThrows(NotFoundException.class,
-                () -> service.chooseOption("intruder", session.getId(), 0));
+                () -> service.chooseOption("intruder", session.getId(), 0, session.getVersion()));
         verifyNoInteractions(books);
     }
 
@@ -93,7 +94,18 @@ class GameApplicationServiceTest {
         session.moveTo("s2", 10, GameStatus.FINISHED);
 
         assertThrows(GameFinishedException.class,
-                () -> service.chooseOption("u1", session.getId(), 0));
+                () -> service.chooseOption("u1", session.getId(), 0, session.getVersion()));
+    }
+
+    @Test
+    void chooseOption_withStaleVersion_isRejected() {
+        var session = existing("u1");
+        session.setVersion(2);
+
+        assertThrows(ConflictException.class,
+                () -> service.chooseOption("u1", session.getId(), 0, 1));
+
+        verifyNoInteractions(books);
     }
 
     @Test

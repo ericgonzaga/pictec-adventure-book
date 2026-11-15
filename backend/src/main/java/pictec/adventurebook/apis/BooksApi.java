@@ -25,10 +25,10 @@ public class BooksApi {
     private final BookApplicationService service;
 
     @GetMapping
-    public List<BookMetadata> list(@RequestParam(required = false) String q,
+    public List<BookMetadata> list(@RequestParam(required = false) String query,
             @RequestParam(required = false) String category,
             @RequestParam(required = false) BookDifficulty difficulty) {
-        return service.list(q, category, difficulty);
+        return service.list(query, category, difficulty);
     }
 
     @GetMapping("/{id}")
