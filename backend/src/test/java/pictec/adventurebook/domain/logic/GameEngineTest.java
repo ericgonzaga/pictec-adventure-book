@@ -1,69 +1,70 @@
 package pictec.adventurebook.domain.logic;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static pictec.adventurebook.support.BookFixtures.*;
+
 import org.junit.jupiter.api.Test;
 
-import pictec.adventurebook.domain.entities.BookContent;
 import pictec.adventurebook.domain.entities.InvalidChoiceException;
 import pictec.adventurebook.domain.enums.GameStatus;
 import pictec.adventurebook.domain.exceptions.GameFinishedException;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static pictec.adventurebook.domain.logic.Books.*;
-
 class GameEngineTest {
 
-    private final GameEngine engine = new GameEngine(10);
     private static final String USER_ID = "user";
     private static final String BOOK_ID = "book";
 
-    @Test
-    void startsAtBeginSectionWithTenHealth() {
-        var game = engine.start(USER_ID, BOOK_ID, valid());
+    private final GameEngine engine = new GameEngine(10);
 
-        assertThat(game.getCurrentBookSectionId()).isEqualTo("1");
-        assertThat(game.getHealth()).isEqualTo(10);
-        assertThat(game.getStatus()).isEqualTo(GameStatus.IN_PROGRESS);
+    @Test
+    void startsAtBeginSectionWithInitialHealth() {
+        var session = engine.start(USER_ID, BOOK_ID, valid());
+
+        assertThat(session.getCurrentBookSectionId()).isEqualTo("1");
+        assertThat(session.getHealth()).isEqualTo(10);
+        assertThat(session.getStatus()).isEqualTo(GameStatus.IN_PROGRESS);
     }
 
     @Test
     void choiceWithoutConsequenceMovesAndKeepsHealth() {
         var book = valid();
         var session = engine.start(USER_ID, BOOK_ID, book);
+
         var section = engine.choose(session, book, 0);
 
+        assertThat(section.id()).isEqualTo("2");
         assertThat(session.getCurrentBookSectionId()).isEqualTo("2");
         assertThat(session.getHealth()).isEqualTo(10);
         assertThat(session.getStatus()).isEqualTo(GameStatus.IN_PROGRESS);
-        assertThat(section.id()).isEqualTo("2");
     }
 
     @Test
-    void choiceWithConsequenceReducesHealth() {
-        BookContent book = book(begin("1", damage("2", 3)), end("2"));
+    void damageConsequenceReducesHealth() {
+        var book = book(begin("1", damage("2", 3)), node("2", go("3")), end("3"));
         var session = engine.start(USER_ID, BOOK_ID, book);
-        var section = engine.choose(session, book, 0);
+
+        engine.choose(session, book, 0);
 
         assertThat(session.getHealth()).isEqualTo(7);
-        assertThat(session.getStatus()).isEqualTo(GameStatus.FINISHED);
-        assertThat(section.id()).isEqualTo("2");
+        assertThat(session.getStatus()).isEqualTo(GameStatus.IN_PROGRESS);
     }
 
     @Test
-    void choiceWithConsequenceIncreaseHealth() {
-        BookContent book = book(begin("1", heal("2", 3)), end("2"));
+    void healConsequenceIncreasesHealth() {
+        var book = book(begin("1", heal("2", 3)), node("2", go("3")), end("3"));
         var session = engine.start(USER_ID, BOOK_ID, book);
-        var section = engine.choose(session, book, 0);
+
+        engine.choose(session, book, 0);
 
         assertThat(session.getHealth()).isEqualTo(13);
-        assertThat(session.getStatus()).isEqualTo(GameStatus.FINISHED);
-        assertThat(section.id()).isEqualTo("2");
     }
 
     @Test
-    void gameEndsWithDeathWhenHealthReachesZeroEvenOnNonEndSection() {
-        BookContent book = book(begin("1", damage("2", 10)), node("2", go("3")), end("3"));
+    void healthReachingZeroKillsPlayerEvenOutsideEnd() {
+        var book = book(begin("1", damage("2", 10)), node("2", go("3")), end("3"));
         var session = engine.start(USER_ID, BOOK_ID, book);
+
         engine.choose(session, book, 0);
 
         assertThat(session.getHealth()).isLessThanOrEqualTo(0);
@@ -71,7 +72,7 @@ class GameEngineTest {
     }
 
     @Test
-    void reachingEndSectionFinishesGameAndBlocksFurtherChoices() {
+    void reachingEndFinishesGameAndBlocksFurtherChoices() {
         var book = valid();
         var session = engine.start(USER_ID, BOOK_ID, book);
         engine.choose(session, book, 0);
@@ -84,7 +85,7 @@ class GameEngineTest {
     }
 
     @Test
-    void rejectsOptionIndexOutsideCurrentSection() {
+    void rejectsOptionIndexOutOfRange() {
         var book = valid();
         var session = engine.start(USER_ID, BOOK_ID, book);
 

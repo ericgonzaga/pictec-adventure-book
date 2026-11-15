@@ -5,22 +5,20 @@ import java.util.UUID;
 
 import org.slf4j.LoggerFactory;
 import org.slf4j.Logger;
-import org.springframework.cache.annotation.CacheEvict;
-import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 
 import lombok.RequiredArgsConstructor;
-import pictec.adventurebook.apis.dtos.BookMetadataRequest;
 import pictec.adventurebook.domain.entities.BookContent;
 import pictec.adventurebook.domain.entities.BookMetadata;
 import pictec.adventurebook.domain.entities.BookSection;
+import pictec.adventurebook.domain.enums.BookDifficulty;
 import pictec.adventurebook.domain.exceptions.ConflictException;
 import pictec.adventurebook.domain.exceptions.InvalidBookException;
 import pictec.adventurebook.domain.exceptions.NotFoundException;
 import pictec.adventurebook.domain.logic.BookValidator;
-import pictec.adventurebook.services.respositories.BookMetadataRepository;
-import pictec.adventurebook.services.respositories.GameSessionRepository;
-import pictec.adventurebook.services.storage.BookContentStorage;
+import pictec.adventurebook.services.irespositories.IBookMetadataRepository;
+import pictec.adventurebook.services.irespositories.IGameSessionRepository;
+import pictec.adventurebook.services.istorage.IBookContentStorage;
 import tools.jackson.core.JacksonException;
 import tools.jackson.databind.ObjectMapper;
 
@@ -30,9 +28,9 @@ public class BookApplicationService {
 
     private static final Logger log = LoggerFactory.getLogger(BookApplicationService.class);
 
-    private final BookMetadataRepository metadataRepository;
-    private final GameSessionRepository sessions;
-    private final BookContentStorage storage;
+    private final IBookMetadataRepository metadataRepository;
+    private final IGameSessionRepository sessions;
+    private final IBookContentStorage storage;
     private final BookValidator validator;
     private final ObjectMapper mapper;
 
@@ -41,9 +39,9 @@ public class BookApplicationService {
                 .orElseThrow(() -> new NotFoundException("Section not found: " + sectionId));
     }
 
-    public List<BookMetadata> list(String query, String category, String difficulty) {
+    public List<BookMetadata> list(String query, String category, BookDifficulty difficulty) {
         return metadataRepository.search(query == null ? "" : query.trim(),
-                blankToNull(category), blankToNull(difficulty));
+                blankToNull(category), difficulty);
     }
 
     public BookMetadata get(String id) {
@@ -51,12 +49,11 @@ public class BookApplicationService {
                 .orElseThrow(() -> new NotFoundException("Book not found: " + id));
     }
 
-    @Cacheable(value = "bookContent", key = "#bookId")
     public BookContent getContent(String bookId) {
         return parse(storage.load(get(bookId).getContentKey()));
     }
 
-    public BookMetadata insert(byte[] file, BookMetadataRequest metadata) {
+    public BookMetadata insert(byte[] file, BookMetadata metadata) {
         BookContent content = parse(file);
         if (isBlank(content.title()) || isBlank(content.author())) {
             throw new InvalidBookException("Book must have title and author");
@@ -73,9 +70,9 @@ public class BookApplicationService {
                     id,
                     content.title(),
                     content.author(),
-                    metadata.description(),
-                    metadata.category(),
-                    metadata.difficulty(),
+                    metadata.getDescription(),
+                    metadata.getCategory(),
+                    metadata.getDifficulty(),
                     key);
             return metadataRepository.save(newMetadata);
         } catch (RuntimeException e) {
@@ -84,7 +81,6 @@ public class BookApplicationService {
         }
     }
 
-    @CacheEvict(value = "bookContent", key = "#id")
     public void delete(String id) {
         BookMetadata book = get(id);
         if (sessions.existsByBookId(id)) {

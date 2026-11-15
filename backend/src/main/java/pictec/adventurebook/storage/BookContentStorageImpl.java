@@ -8,10 +8,10 @@ import java.nio.file.Path;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
-import pictec.adventurebook.services.storage.BookContentStorage;
+import pictec.adventurebook.services.istorage.IBookContentStorage;
 
 @Component
-public class BookContentStorageImpl implements BookContentStorage {
+public class BookContentStorageImpl implements IBookContentStorage {
 
     private final Path root;
 

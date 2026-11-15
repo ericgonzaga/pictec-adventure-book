@@ -3,14 +3,13 @@ package pictec.adventurebook.domain.entities;
 import java.time.Instant;
 import java.util.UUID;
 
-import org.springframework.data.annotation.Id;
-import org.springframework.data.annotation.Version;
-
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
+import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import jakarta.persistence.Version;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -65,5 +64,10 @@ public class GameSession {
 
     public boolean isInProgress() {
         return status == GameStatus.IN_PROGRESS;
+    }
+
+    public void abandon() {
+        this.status = GameStatus.ABANDONED;
+        this.updatedAt = Instant.now();
     }
 }
