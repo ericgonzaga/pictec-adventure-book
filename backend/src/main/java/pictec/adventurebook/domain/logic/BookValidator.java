@@ -13,6 +13,15 @@ import pictec.adventurebook.domain.exceptions.InvalidBookException;
 
 public class BookValidator {
 
+    private final int maxConsequenceHealth;
+
+    public BookValidator(int maxConsequenceHealth) {
+        if (maxConsequenceHealth <= 0) {
+            throw new IllegalArgumentException("Max consequence health must be greater than zero");
+        }
+        this.maxConsequenceHealth = maxConsequenceHealth;
+    }
+
     public void validate(BookContent book) {
         if (book == null) {
             throw new InvalidBookException("Book must not be null");
@@ -93,9 +102,9 @@ public class BookValidator {
                     if (consequence.type() == null) {
                         errors.add("Consequence in section " + section.id() + " must have a type");
                     }
-                    if (consequence.value() < 0) {
+                    if (consequence.value() < 0 || consequence.value() > this.maxConsequenceHealth) {
                         errors.add("Consequence in section " + section.id()
-                                + " must have a non-negative value");
+                                + " must have a value between 0 and " + this.maxConsequenceHealth);
                     }
                 }
             }

@@ -45,7 +45,7 @@ class BookApplicationServiceTest {
     @BeforeEach
     void setUp() {
         service = new BookApplicationService(repo, sessions, storage,
-                new BookValidator(), JsonMapper.builder().build());
+                new BookValidator(100), JsonMapper.builder().build());
     }
 
     @AfterEach

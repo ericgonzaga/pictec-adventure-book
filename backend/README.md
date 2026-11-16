@@ -23,6 +23,8 @@ The API runs at `http://localhost:8080` (Spring’s default port).
 
 ### Configuration (`src/main/resources/application.properties`)
 
+Before running the project, set `books.storage.dir` as valid directory on your machine.
+
 ## Build and run jar file
 
 ./mvnw clean package

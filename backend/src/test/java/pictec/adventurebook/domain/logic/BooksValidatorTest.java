@@ -11,7 +11,7 @@ import pictec.adventurebook.domain.exceptions.InvalidBookException;
 
 class BookValidatorTest {
 
-    private final BookValidator validator = new BookValidator();
+    private final BookValidator validator = new BookValidator(100);
 
     @Test
     void acceptsValidBook() {
@@ -46,5 +46,21 @@ class BookValidatorTest {
     private void assertInvalid(BookContent book) {
         assertThatThrownBy(() -> validator.validate(book))
                 .isInstanceOf(InvalidBookException.class);
+    }
+
+    @Test
+    void rejectsConsequenceValueAboveMax() {
+        assertInvalid(book(begin("1", damage("2", 101)), end("2")));
+    }
+
+    @Test
+    void acceptsConsequenceValueAtMax() {
+        assertThatCode(() -> validator.validate(book(begin("1", heal("2", 100)), end("2"))))
+                .doesNotThrowAnyException();
+    }
+
+    @Test
+    void rejectsNegativeConsequenceValue() {
+        assertInvalid(book(begin("1", damage("2", -1)), end("2")));
     }
 }

@@ -27,7 +27,7 @@ public class GameEngine {
         BookSection begin = content.findBeginSection()
                 .orElseThrow(() -> new InvalidBookException("Book has no BEGIN section"));
 
-        return new GameSession(userId, bookId, begin.id(), initialHealth);
+        return new GameSession(userId, bookId, begin.id(), this.initialHealth);
     }
 
     public BookSection choose(GameSession session, BookContent content, int optionIndex) {

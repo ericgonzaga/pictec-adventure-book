@@ -16,7 +16,7 @@ public class DomainConfig {
     }
 
     @Bean
-    BookValidator bookValidator() {
-        return new BookValidator();
+    BookValidator bookValidator(@Value("${books.max-consequence-health}") int maxConsequenceHealth) {
+        return new BookValidator(maxConsequenceHealth);
     }
 }

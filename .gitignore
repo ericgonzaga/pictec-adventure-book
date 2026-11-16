@@ -2,3 +2,5 @@ backend/mvnw.cmd
 backend/mvnw
 backend/.gitattributes
 backend/.mvn/wrapper/maven-wrapper.properties
+backend/data/*
+**.zip
