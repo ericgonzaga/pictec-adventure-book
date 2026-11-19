@@ -1,0 +1,72 @@
+<div class="p-6 max-w-3xl mx-auto space-y-6">
+  <div class="flex justify-between items-center border-b pb-4">
+    <button (click)="exitGame()" class="secondary-btn">← Return</button>
+    <span class="text-xs text-gray-500">User ID: {{ userId }}</span>
+  </div>
+
+  @if (errorMessage()) {
+    <div class="p-4 bg-red-100 text-red-800 rounded flex justify-between items-center">
+      <span>{{ errorMessage() }}</span>
+      <button (click)="reloadCurrentSession()" class="underline text-sm font-medium">Refresh</button>
+    </div>
+  }
+
+  @if (loading()) {
+    <p class="text-gray-600">Loading...</p>
+  } @else if (playState(); as state) {
+    <div class="p-4 bg-gray-100 rounded flex flex-wrap justify-between items-center gap-4">
+      <div class="flex gap-6">
+        <div>
+          <span class="text-xs text-gray-500 block">Health</span>
+          <span class="font-bold text-lg">{{ state.gameSession.health }}</span>
+        </div>
+        <div>
+          <span class="text-xs text-gray-500 block">Status</span>
+          <span class="font-semibold">{{ state.gameSession.status }}</span>
+        </div>
+        <div>
+          <span class="text-xs text-gray-500 block">Version</span>
+          <span class="font-mono text-sm">v{{ state.gameSession.version }}</span>
+        </div>
+      </div>
+
+      <button (click)="onRestart()" class="px-3 py-1.5 bg-amber-600 text-white rounded text-sm">Restart Game</button>
+    </div>
+
+    <div class="p-6 border rounded bg-white space-y-4">
+      <div class="flex justify-between text-xs text-gray-400">
+        <span>Section: {{ state.section.id }}</span>
+        <span>Type: {{ state.section.type }}</span>
+      </div>
+
+      <p class="text-lg leading-relaxed whitespace-pre-line">
+        {{ state.section.text }}
+      </p>
+    </div>
+
+    @if (state.gameSession.status === "IN_PROGRESS" && state.section.type !== "END") {
+      <div class="space-y-3">
+        <h3 class="font-semibold text-sm uppercase text-gray-500">Choose your path:</h3>
+        @for (option of state.section.options; track $index) {
+          <button (click)="onChooseOption($index)" class="w-full text-left p-4 border rounded hover:bg-blue-50 transition flex justify-between items-center">
+            <span>{{ option.description }}</span>
+            @if (option.consequence) {
+              <span class="text-xs px-2 py-1 rounded bg-gray-200"> {{ option.consequence.type }} ({{ option.consequence.value }}) </span>
+            }
+          </button>
+        }
+      </div>
+    } @else {
+      <div class="p-6 border rounded bg-gray-50 text-center space-y-4">
+        <h3 class="text-xl font-bold">
+          @if (state.gameSession.status === "DEAD") {
+            You died!
+          } @else {
+            End of the Adventure!
+          }
+        </h3>
+        <button (click)="onRestart()" class="primary-btn">Play Again</button>
+      </div>
+    }
+  }
+</div>

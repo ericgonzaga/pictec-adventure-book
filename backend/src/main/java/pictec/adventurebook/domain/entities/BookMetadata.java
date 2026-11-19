@@ -46,10 +46,6 @@ public class BookMetadata {
     @Size(max = 500)
     private String description;
 
-    /**
-     * TODO: create a new entity category managed by the user.
-     * We can also change this field to a list to allow multiple categories.
-     */
     @Size(max = 100)
     private String category;
 
